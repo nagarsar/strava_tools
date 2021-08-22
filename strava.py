@@ -54,7 +54,7 @@ def refresh(write=False):
 def update_activity_description(activity_id, description):
     
     query = f"https://www.strava.com/api/v3/activities/{activity_id}"
-
+    
     response = requests.put(query, 
         data={"description": description},
         headers={'Authorization': 'Bearer ' + access_token})
@@ -91,7 +91,7 @@ def get_activities():
     set_quota(1)
 
 
-    with open('data.json', 'w', encoding="utf-8", newline='\r\n') as output:
+    with open('json_objects/activities.json', 'w', encoding="utf-8", newline='\r\n') as output:
         json.dump(response, output, ensure_ascii=False, indent=4)
 
     return response
@@ -108,7 +108,7 @@ def get_activity(activity_id):
     ).json()
     set_quota(1)
 
-    with open('data.json', 'w', encoding="utf-8", newline='\r\n') as output:
+    with open('json_objects/activity.json', 'w', encoding="utf-8", newline='\r\n') as output:
         json.dump(response, output, ensure_ascii=False, indent=4)
     
     return response
@@ -135,7 +135,7 @@ def get_segments(coordinates=[]):
     ).json()
     set_quota(1)
 
-    with open('data.json', 'w', encoding="utf-8", newline='\r\n') as output:
+    with open('json_objects/segments.json', 'w', encoding="utf-8", newline='\r\n') as output:
         json.dump(response, output, ensure_ascii=False, indent=4)
 
     return response
@@ -151,7 +151,7 @@ def get_segment_by_id(id):
     ).json()
     set_quota(1)
 
-    with open('segments.json', 'w+', encoding="utf-8", newline='\r\n') as output:
+    with open('json_objects/segment.json', 'w+', encoding="utf-8", newline='\r\n') as output:
         json.dump(response, output, ensure_ascii=False, indent=4)
 
     return response

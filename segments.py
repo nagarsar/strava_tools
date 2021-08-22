@@ -1,10 +1,10 @@
 import strava
 from util import *
 import pandas as pd
+import rate
+import time
 
 
-# INFO : This function is very extensive in terms of API usage
-#        TODO : possibility to run a job accros several days. 
 
 
 def generate_segments_report(output_file="strava_template.csv",coordinates=[], step=0):
@@ -14,7 +14,7 @@ def generate_segments_report(output_file="strava_template.csv",coordinates=[], s
      - coordinates of the area to cover
      - step : distance in km for intermediates areas in the area to cover, 0 to disable
     outputs:
-     - csv file : ts_<output_file>
+     - csv file : reports/ts_<output_file>
     return (None)
     """
     rows=[]
@@ -27,6 +27,33 @@ def generate_segments_report(output_file="strava_template.csv",coordinates=[], s
     
     print(f"Given area: {distance[0]}km, | Step: {step}km")
 
+    nb_zones_to_fetch = distance[0]/step
+    nb_segments_per_zones = 10
+    nb_token_needed = nb_zones_to_fetch * nb_segments_per_zones
+    token_used = rate.get_data('quota_day')
+    max_slot_15_per_day = 10
+    secs_per_15 = 900
+    if nb_token_needed <= 100:
+        #instantaneous
+        seconds_needed = 10
+    if 100 < nb_token_needed and nb_token_needed <= 1000:
+        # 1 day 
+        slot_15_needed = nb_token_needed / 100
+        seconds_needed = slot_15_needed * secs_per_15
+    if 1000 < nb_token_needed:
+        # more than 1 day
+        slot_day_needed = nb_token_needed / 1000
+        for i in range(1, slot_day_needed + 1):
+            if i == slot_day_needed:
+                token_used = token_used + (slot_day_needed * 1000)
+                nb_token_needed = nb_token_needed - token_used
+                slot_15_needed = nb_token_needed / 100
+            slot_15_needed = max_slot_15_per_day
+        seconds_needed = slot_day_needed * 172800 + slot_15_needed * secs_per_15
+    time_it_takes = f"{int(seconds_needed/172800)}d {int(seconds_needed%172800/3600)}h {int(seconds_needed%172800%3600/60)}m {int(seconds_needed%172800%3600%60)}s"
+    
+    print(f"Assuming there is no parraleles jobs... \nIt will take {time_it_takes} to run this program.")
+    
     if step:
         zones_nb  = int(distance[0] / step)      # number of zones
         zone_lat = float(distance[1] / zones_nb) # lat range zone
@@ -47,7 +74,6 @@ def generate_segments_report(output_file="strava_template.csv",coordinates=[], s
             lon2 = lon2 + zone_lon
             all_coordinates.append([lat1,lon1,lat2,lon2])
 
-
     for coord in all_coordinates:
 
         segments = strava.get_segments(coord)
@@ -55,59 +81,77 @@ def generate_segments_report(output_file="strava_template.csv",coordinates=[], s
             print(f"could fetch segments for {coord} segment obj content:{segments}")
             continue
 
-        for segment in segments['segments']:
-            try:    
-                segment_info = strava.get_segment_by_id(segment['id'])
-                if "distance" not in segment_info:
-                    print(f"could fetch distance for {segment_info['name']}")
-                    continue
-                distance = segment_info['distance']
-                time = convert_time(segment_info['xoms']['kom'])
-                speed = convert_speed(time,distance,"km_h")
-                athlete_count = segment_info['athlete_count']
-                average_grade = segment_info['average_grade']
-                            
-                row = {
-                    "id":segment_info['id'],
-                    "feasibility": "yes" if (speed < 80 and athlete_count < 30000) else "no",
-                    "speed_by_grade":speed / average_grade if average_grade else speed ,
-                    "name":segment_info['name'],
-                    "distance":distance,
-                    "kom":time,
-                    "speed":speed,
-                    "average_grade":average_grade,
-                    "maximum_grade":segment_info['maximum_grade'],
-                    "elevation_high":segment_info['elevation_high'],
-                    "elevation_low":segment_info['elevation_low'],
-                    "climb_category":segment_info['climb_category'],
-                    "created_at":segment_info['created_at'],
-                    "updated_at":segment_info['updated_at'],
-                    "total_elevation_gain":segment_info['total_elevation_gain'],
-                    "effort_count":segment_info['effort_count'],
-                    "athlete_count":athlete_count,
-                    "star_count":segment_info['star_count'],
-                    #"local_legend":segment_info['local_legend']['effort_count'] if "effort_count" in segment_info['local_legend'] else "none",
-                    "local_legend":segment_info['local_legend']
-                }
-                rows.append(row)
+        # 15 min test
+        if not rate.get_data('quota_15') <= 90:
+            # wait 15 min.
+            time_15 = rate.get_data('first_request_of_the_last_15')
+            time_15_ts = int(get_timestamp(time_15, "%Y-%m-%dT%H:%M:%SZ"))
+            while time_15_ts + 950 > int(time.time()):
+                print("wait 15 min to unlock api strava access")
+                time.sleep(1)
+        else:
+            # the day test
+            if not rate.get_data('quota_day') <= 990:
+                # wait 1 day.
+                first_req_day = rate.get_data('first_request_of_the_day')
+                time_now = get_str_time(datetime.now())
+                while first_req_day[0:10] == time_now[0:10]:
+                    print("wait 1 day to unlock api strava access")
+                    time.sleep(1)
+            else:
+                for segment in segments['segments']:
+                    try:    
+                        segment_info = strava.get_segment_by_id(segment['id'])
+                        if "distance" not in segment_info:
+                            print(f"could fetch distance for {segment_info['name']}")
+                            continue
+                        distance = segment_info['distance']
+                        time = convert_time(segment_info['xoms']['kom'])
+                        speed = convert_speed(time,distance,"km_h")
+                        athlete_count = segment_info['athlete_count']
+                        average_grade = segment_info['average_grade']
+                                    
+                        row = {
+                            "id":segment_info['id'],
+                            "feasibility": "yes" if (speed < 80 and athlete_count < 30000) else "no",
+                            "speed_by_grade":speed / average_grade if average_grade else speed ,
+                            "name":segment_info['name'],
+                            "distance":distance,
+                            "kom":time,
+                            "speed":speed,
+                            "average_grade":average_grade,
+                            "maximum_grade":segment_info['maximum_grade'],
+                            "elevation_high":segment_info['elevation_high'],
+                            "elevation_low":segment_info['elevation_low'],
+                            "climb_category":segment_info['climb_category'],
+                            "created_at":segment_info['created_at'],
+                            "updated_at":segment_info['updated_at'],
+                            "total_elevation_gain":segment_info['total_elevation_gain'],
+                            "effort_count":segment_info['effort_count'],
+                            "athlete_count":athlete_count,
+                            "star_count":segment_info['star_count'],
+                            #"local_legend":segment_info['local_legend']['effort_count'] if "effort_count" in segment_info['local_legend'] else "none",
+                            "local_legend":segment_info['local_legend']
+                        }
+                        rows.append(row)
 
-            except Exception as e: 
-                print(f"error fetching info for this segment: {e}")
+                    except Exception as e: 
+                        print(f"error fetching info for this segment: {e}")
 
 
     df = pd.DataFrame(rows)        
     ts = datetime.now().strftime("%Y%m%d%H%M%S")    
-    output_file = f'{ts}_{output_file}.csv'
+    output_file = f'reports/{ts}_{output_file}.csv'
     df.to_csv(output_file, sep='|', index=False)
 
 
 if __name__ == '__main__':
 
-    access_token = strava.refresh(write=True)
+    strava.access_token = strava.refresh(write=True)
         
     # Richmond park (uk)
     #coordinates = [51.3977365062017, -0.3089109797877128, 51.461489208009404, -0.2463514750273678 ]
-    #generate_report(output_file='richmond_segments.csv',coordinates=coordinates, step=1)
+    #generate_segments_report(output_file='richmond_segments.csv',coordinates=coordinates, step=1)
 
     # London (uk)
     coordinates = [51.2956935082215, -0.5569311506363874, 51.79255057165816, 0.4590442005871429 ]

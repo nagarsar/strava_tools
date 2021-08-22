@@ -1,0 +1,11 @@
+{
+    "daily_quota": 1000,
+    "15_min_quota": 100,
+    "quota_day": 169,
+    "quota_15": 92,
+    "first_request_of_the_day": "2021-08-22T11:58:01Z",
+    "first_request_of_the_last_15": "2021-08-22T19:34:26Z",
+    "limit_reached_day": false,
+    "limit_reached_15": false,
+    "last_request": "2021-08-22T19:36:53Z"
+}

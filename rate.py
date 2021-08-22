@@ -5,7 +5,7 @@ from util import *
 
 
 
-rate_limit_file = "rate_limits.json"
+rate_limit_file = "json_objects/rate_limits.json"
 default = {
     "daily_quota": 1000,
     "15_min_quota": 100,

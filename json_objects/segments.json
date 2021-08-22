@@ -1,0 +1,26 @@
+{
+    "segments": [
+        {
+            "id": 25919081,
+            "resource_state": 2,
+            "name": "Sprint past the car park",
+            "climb_category": 0,
+            "climb_category_desc": "NC",
+            "avg_grade": -0.0,
+            "start_latlng": [
+                51.40685,
+                -0.506109
+            ],
+            "end_latlng": [
+                51.401758,
+                -0.506064
+            ],
+            "elev_difference": 3.0,
+            "distance": 575.1,
+            "points": "ykwxHdzaBnBm@VGfFm@`DWpBAfCVlB`@j@NtAj@",
+            "starred": false,
+            "elevation_profile": "https://d3o5xota0a1fcr.cloudfront.net/v6/charts/XROQZGUBPJ6HGIPFMUEUUU3IOHU7T55FUZL7FGDMYML4HODTHWRL6OF73DXOMS7GC7CK3JEPU3NECUUAEENJ6===",
+            "local_legend_enabled": true
+        }
+    ]
+}

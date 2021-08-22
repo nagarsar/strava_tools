@@ -65,15 +65,15 @@ def update_activity_description_with_laps():
     last_activity = activities[0]
     last_activity_id = last_activity['id']
 
-    visu1 = '\n--------------------------\n'
+    #visu1 = '\n--------------------------\n'
     activity = strava.get_activity(last_activity_id)
-    description = str(activity['description'])
-    if visu1 in description:
+    description = str(activity['description']).strip('None')
+    if "lap" in description:
         return
-    description = description + visu1 
+    #description = description + visu1 
     laps = activity['laps']
     for i,lap in enumerate(laps):
-        description += 'lap' + str(i + 1) + str(': ') + str("{:.2f}".format(lap['average_speed'] * 3.6)) + ' km/h \n'
+        description += 'lap' + str(i + 1) + str(': ') + str("{:.2f}".format(lap['average_speed'] * 3.6)) + ' km/h  '
 
     print(f"editing activity description with :{description[:-1]}")
     strava.update_activity_description(last_activity_id, description[:-1])
@@ -82,6 +82,6 @@ def update_activity_description_with_laps():
 
 if __name__ == '__main__':
 
-    access_token = strava.refresh(write=True)
+    strava.access_token = strava.refresh(write=True)
 
     update_activity_description_with_laps()
